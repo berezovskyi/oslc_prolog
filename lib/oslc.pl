@@ -96,7 +96,7 @@ create_resource(IRI, Types, Shapes, Properties, Sink) :-
     create_shapes_dict(Shapes, Dict),
     oslc_resource0(IRI, Dict, Properties, Sink),
     check_resource(IRI, Dict, Sink)
-  )).
+  ), txn_oslc_prolog).
 
 %!  oslc_resource(+IRI, +Properties, +SourceSink) is det.
 %
@@ -116,7 +116,7 @@ oslc_resource(IRI, Properties, SourceSink) :-
     applicable_shapes(IRI, Shapes, SourceSink),
     create_shapes_dict(Shapes, Dict),
     oslc_resource0(IRI, Dict, Properties, SourceSink)
-  )).
+  ), txn_oslc_prolog).
 
 oslc_resource0(_, _, [], _) :- !.
 
@@ -248,10 +248,12 @@ copy_resource(IRIFrom, IRITo, Source, Sink, Options) :-
   ( is_list(IRIFrom),
     is_list(IRITo)
   -> rdf_transaction(
-       maplist(copy_resource_(Options, Source, Sink), IRIFrom, IRITo)
+       maplist(copy_resource_(Options, Source, Sink), IRIFrom, IRITo),
+       txn_oslc_prolog_copy
      )
   ; rdf_transaction(
-      copy_resource_(Options, Source, Sink, IRIFrom, IRITo)
+      copy_resource_(Options, Source, Sink, IRIFrom, IRITo),
+      txn_oslc_prolog_copy
     )
   ).
 
@@ -407,10 +409,12 @@ delete_resource(IRI, Sink) :-
 delete_resource(IRI, Sink, Options) :-
   ( is_list(IRI)
   -> rdf_transaction(
-       maplist(delete_resource_(Options, Sink), IRI)
+       maplist(delete_resource_(Options, Sink), IRI),
+       txn_oslc_prolog
      )
   ; rdf_transaction(
-      delete_resource_(Options, Sink, IRI)
+      delete_resource_(Options, Sink, IRI),
+      txn_oslc_prolog
     )
   ).
 
