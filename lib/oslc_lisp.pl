@@ -20,6 +20,32 @@ limitations under the License.
 
 :- multifile lisp:funct/3.
 
+% :- cp_after_load((
+%   create_thread(oslc_client)
+% )).
+
+% TODO refactor with rules.pl
+initialise_async(Alias, QueueAlias) :-
+   ( thread_property(_, alias(Alias))
+   -> true
+    ; thread_create(Alias, _, [alias(Alias)])
+   ),
+   ( message_queue_property(_, alias(QueueAlias))
+   -> true
+    ; message_queue_create(QueueAlias, [alias(QueueAlias)])
+   ).
+
+oslc_client_t :- 
+  debug(lisp(oslc), 'Initialising OSLC Client thread for async requests', []),
+  % gtrace,
+  repeat,
+  thread_get_message(oslc_client_q, post_request(ResourceIRI, PostURI, Options)),
+  catch_with_backtrace(
+    oslc_client:post_resource(ResourceIRI, PostURI, Options),
+    _, debug(lisp(oslc), 'Failed to POST resource to [~w]', [PostURI])
+  ),
+  fail.
+
 lisp:funct(send, [ResourceIRI, PostURI], true) :- !,
   debug(lisp(oslc), 'POSTing resource [~w] to [~w]', [ResourceIRI, PostURI]),
   oslc_client:post_resource(ResourceIRI, PostURI, []).
@@ -27,6 +53,14 @@ lisp:funct(send, [ResourceIRI, PostURI], true) :- !,
 lisp:funct(send, [ResourceIRI, PostURI, Options], true) :- !,
   debug(lisp(oslc), 'POSTing resource [~w] to [~w]', [ResourceIRI, PostURI]),
   oslc_client:post_resource(ResourceIRI, PostURI, Options).
+
+lisp:funct(send_async, [ResourceIRI, PostURI, Options], true) :- !,
+  debug(lisp(oslc), 'POSTing resource [~w] to [~w]', [ResourceIRI, PostURI]),
+  % gtrace,
+  initialise_async(oslc_client_t, oslc_client_q),
+  % TODO copy the resource before the rule can clean up
+  % TODO add a func with cleanup option
+  thread_send_message(oslc_client_q, post_request(ResourceIRI, PostURI, Options)).
 
 lisp:funct(send_graph, [GraphIRI, PostURI], true) :- !,
   debug(lisp(oslc), 'POSTing graph [~w] to [~w]', [GraphIRI, PostURI]),
