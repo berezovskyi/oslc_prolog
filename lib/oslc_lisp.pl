@@ -20,6 +20,7 @@ limitations under the License.
 
 :- multifile lisp:funct/3.
 
+% TODO why is this commented out
 % :- cp_after_load((
 %   create_thread(oslc_client)
 % )).
