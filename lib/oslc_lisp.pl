@@ -25,6 +25,10 @@ limitations under the License.
 %   create_thread(oslc_client)
 % )).
 
+:- initialize(
+  initialise_async(oslc_client_t, oslc_client_q)
+).
+
 % TODO refactor with rules.pl
 initialise_async(Alias, QueueAlias) :-
    ( thread_property(_, alias(Alias))
@@ -58,7 +62,6 @@ lisp:funct(send, [ResourceIRI, PostURI, Options], true) :- !,
 lisp:funct(send_async, [ResourceIRI, PostURI, Options], true) :- !,
   debug(lisp(oslc), 'POSTing resource [~w] to [~w]', [ResourceIRI, PostURI]),
   % gtrace,
-  initialise_async(oslc_client_t, oslc_client_q),
   % TODO copy the resource before the rule can clean up
   % TODO add a func with cleanup option
   thread_send_message(oslc_client_q, post_request(ResourceIRI, PostURI, Options)).
