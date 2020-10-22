@@ -35,7 +35,7 @@ post_graph(Graph, URI, Options) :-
   oslc_dispatch:serializer(ContentType, Serializer),
   term_to_atom(ContentType, PostContentType),
   merge_options([ content_type(PostContentType),
-                  status_code(200),
+                  status_code(Code),
                   request_header('Accept'='text/turtle,application/rdf+xml,application/n-triples')
                 ], Options, Options1),
   setup_call_cleanup(
@@ -50,6 +50,7 @@ post_graph(Graph, URI, Options) :-
              open_memory_file(ResponseFile, write, ResponseStream, [encoding(octet)]),
              merge_options([headers(ResponseHeaders), to(stream(ResponseStream))], Options1, Options2),
              http_post(URI, memory_file(ContentType, File), _, Options2),
+             debug(lisp(oslc), 'HTTP response code: ~w xxx', [Code]),
              close(ResponseStream),
              open_memory_file(ResponseFile, read, Stream, [encoding(utf8)]),
              ignore(read_response_body(ResponseHeaders, Stream, ResponseGraph)),
@@ -57,7 +58,9 @@ post_graph(Graph, URI, Options) :-
            ),
            free_memory_file(ResponseFile)
          )
-      ; http_post(URI, memory_file(ContentType, File), _, Options1)
+      ; (http_post(URI, memory_file(ContentType, File), _, Options1),
+        debug(lisp(oslc), 'HTTP response code: ~w', [Code])
+        )
       )
     ),
     free_memory_file(File)
