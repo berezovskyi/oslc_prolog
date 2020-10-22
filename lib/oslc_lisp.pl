@@ -25,9 +25,9 @@ limitations under the License.
 %   create_thread(oslc_client)
 % )).
 
-:- initialize(
+:- initialization((
   initialise_async(oslc_client_t, oslc_client_q)
-).
+)).
 
 % TODO refactor with rules.pl
 initialise_async(Alias, QueueAlias) :-
