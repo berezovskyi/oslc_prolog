@@ -73,30 +73,32 @@ post_resource(IRI, URI, Options) :-
     (
       ( var(Graph)
       -> (
-        (
-          rdf(IRI, _, _)
-          -> debug(lisp(oslc), 'Resource ~w is present in default graph', [IRI])
-          ; debug(lisp(oslc), 'Resource ~w is MISSING FROM default graph', [IRI])
-        ),
-        copy_resource(IRI, IRI, rdf, rdf(Tmp), Options),
-        (
-          rdf(IRI, _, _, Tmp)
-          -> debug(lisp(oslc), 'Resource ~w is present in TG=~w', [IRI, Tmp])
-          ; debug(lisp(oslc), 'Resource ~w is MISSING FROM TG=~w', [IRI, Tmp])
-        )
+        % (
+        %   rdf(IRI, _, _)
+        %   -> debug(lisp(oslc), 'Resource ~w is present in default graph', [IRI])
+        %   ; debug(lisp(oslc), 'Resource ~w is MISSING FROM default graph', [IRI])
+        % ),
+        % rdf(IRI, _, _),
+        copy_resource(IRI, IRI, rdf, rdf(Tmp), Options)
+        % ,(
+        %   rdf(IRI, _, _, Tmp)
+        %   -> debug(lisp(oslc), 'Resource ~w is present in TG=~w', [IRI, Tmp])
+        %   ; debug(lisp(oslc), 'Resource ~w is MISSING FROM TG=~w', [IRI, Tmp])
+        % )
       )
       ; (
-        (
-          rdf(IRI, _, _, Graph)
-          -> debug(lisp(oslc), 'Resource ~w is present in G=~w', [IRI, Graph])
-          ; debug(lisp(oslc), 'Resource ~w is MISSING FROM G=~w', [IRI, Graph])
-        ),
-        copy_resource(IRI, IRI, rdf(Graph), rdf(Tmp), Options),
-        (
-          rdf(IRI, _, _, Tmp)
-          -> debug(lisp(oslc), 'Resource ~w is present in TG=~w', [IRI, Tmp])
-          ; debug(lisp(oslc), 'Resource ~w is MISSING FROM TG=~w', [IRI, Tmp])
-        )
+        % (
+        %   rdf(IRI, _, _, Graph)
+        %   -> debug(lisp(oslc), 'Resource ~w is present in G=~w', [IRI, Graph])
+        %   ; debug(lisp(oslc), 'Resource ~w is MISSING FROM G=~w', [IRI, Graph])
+        % ),
+        % rdf(IRI, _, _, Graph),
+        copy_resource(IRI, IRI, rdf(Graph), rdf(Tmp), Options)
+        % ,(
+        %   rdf(IRI, _, _, Tmp)
+        %   -> debug(lisp(oslc), 'Resource ~w is present in TG=~w', [IRI, Tmp])
+        %   ; debug(lisp(oslc), 'Resource ~w is MISSING FROM TG=~w', [IRI, Tmp])
+        % )
       )
       ),
       post_graph(Tmp, URI, Options)
