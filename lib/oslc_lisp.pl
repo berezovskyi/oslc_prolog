@@ -27,6 +27,7 @@ limitations under the License.
 
 :- initialization((
   initialise_async(oslc_client_t, oslc_client_q)
+  %, message_queue_create(_, [alias(oslc_client_retry_q)])
 )).
 
 % TODO refactor with rules.pl
@@ -45,10 +46,26 @@ oslc_client_t :-
   % gtrace,
   repeat,
   thread_get_message(oslc_client_q, post_request(ResourceIRI, PostURI, Options)),
+  % sleep(0.1),
+  % rdf
   catch_with_backtrace(
     oslc_client:post_resource(ResourceIRI, PostURI, Options),
     _, debug(lisp(oslc), 'Failed to POST resource to [~w]', [PostURI])
   ),
+
+  % (thread_peek_message(oslc_client_q, post_request(ResourceIRI, PostURI, Options))
+  %   -> (
+  %     % send a message if it is ready
+  %     thread_get_message(oslc_client_q, post_request(ResourceIRI, PostURI, Options)),
+  %     % rdf
+  %     catch_with_backtrace(
+  %       oslc_client:post_resource(ResourceIRI, PostURI, Options),
+  %       _, debug(lisp(oslc), 'Failed to POST resource to [~w]', [PostURI])
+  %     )
+  %   )
+  %   ; (
+      
+  %   )
   fail.
 
 lisp:funct(send, [ResourceIRI, PostURI], true) :- !,
