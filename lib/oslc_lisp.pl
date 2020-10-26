@@ -131,6 +131,8 @@ lisp:funct(send_async, [ResourceIRI, PostURI, Options], true) :- !,
   % gtrace,
   % TODO copy the resource before the rule can clean up
   % TODO add a func with cleanup option
+  % TODO 2020-10-26: capture the whole Turtle here to avoid rdf/4 call from 
+  %   another txn context. This will solve the problem of race cond.
   thread_send_message(oslc_client_q, post_request(ResourceIRI, PostURI, Options)).
 
 lisp:funct(send_graph, [GraphIRI, PostURI], true) :- !,
