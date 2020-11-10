@@ -54,7 +54,12 @@ handle_ontology(Context) :-
 output_graph([], _) :- !, fail.
 
 output_graph([One], Context) :- !,
-  Context.graph_out = One.
+  Context.graph_out = One,
+  rdf_graph_property(Context.graph_out, triples(Triples)),
+  ( Triples > 0
+  -> true
+  ; response(204)
+  ).
 
 output_graph(Many, Context) :-
   GraphOut = Context.graph_out,
@@ -109,7 +114,9 @@ handle_get(Context) :-
   ; Set = []
   )),
   catch((
-    copy_resource([IRI|Set], [IRI|Set], rdf, tmp(Context.graph_out), [inline(rdf)|Context.options])
+    copy_resource([IRI|Set], [IRI|Set], rdf, tmp(Context.graph_out), [inline(rdf)|Context.options]),
+    resource_sha1(IRI, Context.graph_out, Hash),
+    Context.headers = ['ETag'(Hash)]
   ),
     oslc_error(Message),
     throw(response(400, Message)) % bad request (problem with Options)
@@ -188,7 +195,7 @@ handle_put0(Context) :-
   IRI = Context.iri,
   autodetect_resource_graph(IRI, Graph),
   once((
-    resource_md5(IRI, Graph, ReceivedHash),
+    resource_sha1(IRI, Graph, ReceivedHash),
     copy_resource(IRI, IRI, rdf(Context.graph_in), rdf(Graph)),
     response(204) % no content
   ; format(atom(Message), 'The value of [If-Match] header does not match [~w]', [Context.iri_spec]),

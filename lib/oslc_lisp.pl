@@ -19,7 +19,7 @@ limitations under the License.
 :- use_module(library(oslc_client)).
 :- use_module(library(semweb/rdf11)).
 
-:- multifile lisp:funct/3.
+:- multifile lisp:func/3.
 
 % TODO why is this commented out
 % :- cp_after_load((
@@ -118,15 +118,14 @@ post_retry_n(ResourceIRI, PostURI, Options, MaxRetries, Retries) :-
   true.
 
 
-lisp:funct(send, [ResourceIRI, PostURI], true) :- !,
+lisp:func(send, [ResourceIRI, PostURI], true) :- !,
   debug(lisp(oslc), 'POSTing resource [~w] to [~w]', [ResourceIRI, PostURI]),
   oslc_client:post_resource(ResourceIRI, PostURI, []).
 
-lisp:funct(send, [ResourceIRI, PostURI, Options], true) :- !,
-  debug(lisp(oslc), 'POSTing resource [~w] to [~w]', [ResourceIRI, PostURI]),
+lisp:func(send, [ResourceIRI, PostURI, Options], true) :- !,
   oslc_client:post_resource(ResourceIRI, PostURI, Options).
 
-lisp:funct(send_async, [ResourceIRI, PostURI, Options], true) :- !,
+lisp:func(send_async, [ResourceIRI, PostURI, Options], true) :- !,
   debug(lisp(oslc), 'POSTing resource async [~w] to [~w]', [ResourceIRI, PostURI]),
   % gtrace,
   % TODO copy the resource before the rule can clean up
@@ -135,10 +134,9 @@ lisp:funct(send_async, [ResourceIRI, PostURI, Options], true) :- !,
   %   another txn context. This will solve the problem of race cond.
   thread_send_message(oslc_client_q, post_request(ResourceIRI, PostURI, Options)).
 
-lisp:funct(send_graph, [GraphIRI, PostURI], true) :- !,
+lisp:func(send_graph, [GraphIRI, PostURI], true) :- !,
   debug(lisp(oslc), 'POSTing graph [~w] to [~w]', [GraphIRI, PostURI]),
   oslc_client:post_graph(GraphIRI, PostURI, []).
 
-lisp:funct(send_graph, [GraphIRI, PostURI, Options], true) :- !,
-  debug(lisp(oslc), 'POSTing graph [~w] to [~w]', [GraphIRI, PostURI]),
+lisp:func(send_graph, [GraphIRI, PostURI, Options], true) :- !,
   oslc_client:post_graph(GraphIRI, PostURI, Options).

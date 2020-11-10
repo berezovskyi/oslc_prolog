@@ -19,15 +19,15 @@ limitations under the License.
                       delete_temp_graph/1,
                       clean_temp_graphs/0,
                       autodetect_resource_graph/2,
-                      resource_md5/3,
-                      graph_md5/2 ] ).
+                      resource_sha1/3 ] ).
 
 :- use_module(library(semweb/rdf11)).
 :- use_module(library(semweb/rdf_persistency)).
+:- use_module(library(oslc_dict2)).
 :- use_module(library(oslc_types)).
 
 :- rdf_meta autodetect_resource_graph(r, -),
-            resource_md5(r, -, -).
+            resource_sha1(r, -, -).
 
 :- dynamic temp_graph/1.
 
@@ -87,16 +87,25 @@ oslc:delete_property(IRI, PropertyDefinition, tmp(Graph)) :-
   ; oslc:delete_property(IRI, PropertyDefinition, rdf(Graph))
   ).
 
+%!  make_temp_graph(-Graph, +Prefix) is det.
+%
+%   Create a new non-persistent (RAM only) graph with unique name prefixed with an atom.
+
+make_temp_graph(Graph, Prefix) :-
+  must_be(var, Graph),
+  uuid(Graph, Prefix),
+  rdf_create_graph(Graph),
+  rdf_persistency(Graph, false),
+  assertz(temp_graph(Graph)).
+
+
 %!  make_temp_graph(-Graph) is det.
 %
 %   Create a new non-persistent (RAM only) graph with unique name.
 
 make_temp_graph(Graph) :-
-  must_be(var, Graph),
-  uuid(Graph),
-  rdf_create_graph(Graph),
-  rdf_persistency(Graph, false),
-  assertz(temp_graph(Graph)).
+  uuid_salt(Prefix),
+  make_temp_graph(Graph, Prefix).
 
 %!  pass_temp_graph(+Graph, +ThreadId) is det.
 %
@@ -138,9 +147,12 @@ clean_temp_graphs :-
 uuid_salt('$oslc_salt_').
 
 uuid(Id) :-
+  uuid_salt(Salt),
+  uuid(Id, Salt).
+
+uuid(Id, Salt) :-
   Max is 1<<128,
   random_between(0, Max, Num),
-  uuid_salt(Salt),
   atom_concat(Salt, Num, Id).
 
 %!  autodetect_resource_graph(+IRI, +Graph) is det.
@@ -168,46 +180,14 @@ autodetect_resource_graph(IRI, Graph) :-
     [Graph] = SortedGraphs
   )).
 
-%!  resource_md5(+IRI, +Graph, -Hash) is det.
+%!  resource_sha1(+IRI, +Graph, -Hash) is det.
 %
-%   Hash is MD5 hash of resource IRI in graph Graph. Names of
+%   Hash is SHA1 hash of resource IRI in graph Graph. Names of
 %   blank nodes do not affect the hash.
 
-resource_md5(IRI, Graph, Hash) :-
+resource_sha1(IRI, Graph, Hash) :-
   must_be(ground, IRI),
   must_be(atom, Graph),
-  rdf_global_id(IRI, Id),
-  resource_content(Id, Graph, ContentList),
-  flatten([Id, ContentList], FlatContentList),
-  atomics_to_string(FlatContentList, String),
-  md5_hash(String, Hash, []).
-
-resource_content(IRI, Graph, ContentList) :-
-  findall([Predicate, Value], (
-    rdf(IRI, Predicate, Object, Graph),
-    ( rdf_is_bnode(Object)
-    -> resource_content(Object, Graph, Value)
-    ; term_string(Object, Value)
-    )
-  ), ContentList).
-
-%!  graph_md5(+Graph, -Hash) is det.
-%
-%   Hash is MD5 hash of content in graph Graph. Names of blank
-%   nodes do not affect the hash. If Graph contains only one resource
-%   =R=, its hash is equal to =|resource_md5(R, Graph, Hash)|=.
-
-graph_md5(Graph, Hash) :-
-  must_be(atom, Graph),
-  findall(Subject, (
-    rdf(Subject, _, _, Graph),
-    \+ rdf_is_bnode(Subject)
-  ), Resources),
-  sort(Resources, SortedResources),
-  findall([Resource, R], (
-    member(Resource, SortedResources),
-    resource_content(Resource, Graph, R)
-  ), ContentList),
-  flatten(ContentList, FlatContentList),
-  atomics_to_string(FlatContentList, String),
-  md5_hash(String, Hash, []).
+  rdf_global_id(IRI, S),
+  resource_dict(S, Dict, [graph(Graph), multi_bnodes(false)]),
+  variant_sha1(Dict, Hash).

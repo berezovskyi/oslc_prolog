@@ -37,6 +37,8 @@ oslc_dispatch:serialize_response(stream(Out), Graph, jsonld) :-
     \+ rdf_is_bnode(S)
   ), List),
   sort(List, Subjects),
+  % TODO: fix handling of cyclic graphs <a,b,_bnode>, <_bnode,c,_bnode>.
+  %       rdf_create_bnode(B), rdf_assert(a,b,B), rdf_assert(B,c,B).
   maplist(ss_to_dict(Graph), Subjects, Dicts),
   json_write(Out, Dicts, [width(0)]).
 
@@ -73,8 +75,13 @@ convert_po(P0, P, O0, O, C0, C, Graph) :-
   convert_resource(P0, P, C0, C1),
   convert_o(O0, O, C1, C, Graph).
 
+convert_o(^^(B, 'http://www.w3.org/2001/XMLSchema#boolean'), @(B), C, C, _) :- !.
 convert_o(^^(O, _), O, C, C, _) :- !.
 convert_o(@(O, _), O, C, C, _) :- !.
+convert_o(O0, O, C0, C, Graph) :-
+  rdf_list(O0), !,
+  rdf_list(O0, L),
+  convert_list_o(L, O, C0, C, Graph).
 convert_o(O0, O, C0, C, Graph) :-
   rdf_is_bnode(O0), !,
   s_to_dict(O0, C0, C, O, Graph).
@@ -85,10 +92,25 @@ convert_o(O0, O, C0, C, _) :-
 convert_resource(R0, R, C0, C) :-
   rdf_global_id(Prefix:Local, R0),
   rdf_current_prefix(Prefix, PrefixIRI), !,
-  format(atom(R), '~w:~w', [Prefix, Local]),
-  C = C0.put(Prefix, PrefixIRI).
+  ( get_dict('@vocab', C0, Vocab)
+  -> ( Vocab = PrefixIRI
+     -> R = Local, C = C0
+     ;  format(atom(R), '~w:~w', [Prefix, Local]),
+        C = C0.put(Prefix, PrefixIRI)
+     )
+  ; Vocab = _{'@vocab': PrefixIRI},
+    C = C0.put(Vocab),
+    R = Local
+  ).
+% No prefix exists
 convert_resource(R, R, C, C).
 
+convert_list_o([], [], C, C, _) :- !.
+convert_list_o([H0|T0], [H|T], C0, C, Graph) :-
+  convert_o(H0, H, C0, C1, Graph),
+  convert_list_o(T0, T, C1, C, Graph).
+
+% NOTE: Loading is not fully compliant with serialization
 % Loading json-ld
 
 rdf_db:rdf_load_stream(jsonld, Stream, Options0) :-
@@ -184,3 +206,29 @@ kv_to_po(Graph, Ctx, S, K, O) :-
   context_to_iri(K, P, Ctx),
   % We have a value, should be processed more elaborately
   rdf_assert(S, P, O, Graph).
+
+:- multifile json:json_write_hook/4 .
+
+json:json_write_hook(date_time(Y,M,D,HH,MM,SS), Stream, _State, _Options) :- !,
+  xsd_time_string(date_time(Y,M,D,HH,MM,SS), 'http://www.w3.org/2001/XMLSchema#dateTime', S),
+  json_write(Stream, S).
+
+json:json_write_hook(date_time(Y,M,D,HH,MM,SS,TZ), Stream, _State, _Options) :- !,
+  xsd_time_string(date_time(Y,M,D,HH,MM,SS,TZ), 'http://www.w3.org/2001/XMLSchema#dateTime', S),
+  json_write(Stream, S).
+
+json:json_write_hook(date(Y,M,D), Stream, _State, _Options) :- !,
+  xsd_time_string(date(Y,M,D), 'http://www.w3.org/2001/XMLSchema#date', S),
+  json_write(Stream, S).
+
+json:json_write_hook(time(H,M,S), Stream, _State, _Options) :- !,
+  xsd_time_string(time(H,M,S), 'http://www.w3.org/2001/XMLSchema#time', S),
+  json_write(Stream, S).
+
+json:json_write_hook(year_month(Y,M), Stream, _State, _Options) :- !,
+  xsd_time_string(year_month(Y,M), 'http://www.w3.org/2001/XMLSchema#gYearMonth', S),
+  json_write(Stream, S).
+
+json:json_write_hook(month_day(M,D), Stream, _State, _Options) :- !,
+  xsd_time_string(month_day(M,D), 'http://www.w3.org/2001/XMLSchema#gMonthDay', S),
+  json_write(Stream, S).

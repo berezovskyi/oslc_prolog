@@ -92,7 +92,7 @@ dispatcher0(Request) :-
   check_method(Request, Method),
   check_accept(Request, ContentType),
   ( memberchk(Method, [post,put]) % if POST or PUT request and there is a body, read it
-  -> read_request_body(Request, GraphIn)
+  -> ignore(read_request_body(Request, GraphIn))
   ; true
   ),
   ( memberchk(search(Search), Request),
@@ -146,9 +146,7 @@ format_response_graph(StatusCode, Graph, Headers, ContentType) :-
   must_be(ground, ContentType),
   format(atom(ContentTypeValue), '~w; charset=utf-8', [ContentType]),
   oslc_dispatch:serializer(ContentType, Serializer), % select proper serializer
-  graph_md5(Graph, Hash),
-  append(Headers, ['Content-type'(ContentTypeValue), 'ETag'(Hash), 'Access-Control-Allow-Origin'('*')], NewHeaders),
-  response(StatusCode, NewHeaders),
+  response(StatusCode, ['Content-type'(ContentTypeValue),'Access-Control-Allow-Origin'('*')|Headers]),
   current_output(Out),
   oslc_dispatch:serialize_response(stream(Out), Graph, Serializer). % serialize temporary RDF graph to the response
 
@@ -157,9 +155,17 @@ check_path(Request, Prefix, ResourceSegments) :-
     memberchk(path(Path), Request),
     setting(oslc_prolog_server:prefix_path, PrefixPath),
     atom_concat(PrefixPath, ServicePath, Path), % check if URI called starts with the prefix path
-    split_string(ServicePath, "/", "/", Parts),
-    strings_to_atoms(Parts, [Prefix|ResourceSegments]),
-    rdf_current_prefix(Prefix, _),
+    ( sub_atom(ServicePath, Before, 1, _, ':')
+    -> sub_atom(ServicePath, 0, Before, _, Prefix),
+       rdf_current_prefix(Prefix, _),
+       After is Before + 1,
+       sub_atom(ServicePath, After, _, 0, SubResource),
+       split_string(SubResource, "/", "/", Parts),
+       strings_to_atoms(Parts, ResourceSegments)
+    ; split_string(ServicePath, "/", "/", Parts),
+      strings_to_atoms(Parts, [Prefix|ResourceSegments]),
+      rdf_current_prefix(Prefix, _)
+    ),
     setting(oslc_prolog_server:exposed_prefixes, ExposedPrefixes),
     once((
       memberchk(Prefix, ExposedPrefixes) % check if prefix is in the list of exposed prefixes
@@ -221,4 +227,3 @@ read_request_body(Request, GraphIn) :-
     ),
     free_memory_file(MemFile)
   ).
-read_request_body(_, _).
